@@ -1,0 +1,228 @@
+---
+title: "March Madness 2017"
+output: html_notebook
+---
+
+
+### Libraries and Data
+```{r}
+install.packages("tidyverse")
+library(tidyverse)
+results <- read_csv(file = "/home/john/basketball/march_madness/2017/data/TourneyCompactResults.csv")
+seeds <- read_csv(file = "/home/john/basketball/march_madness/2017/data/TourneySeeds.csv")
+slots <- read_csv(file = "/home/john/basketball/march_madness/2017/data/TourneySlots.csv")
+```
+
+
+```{r}
+seeds$seed2 <- str_sub(seeds$Seed,2,3)
+```
+
+```{r}
+colnames(results)
+colnames(seeds)
+results_w_seed <- inner_join(results %>% select(-Daynum,-Wscore,-Lscore,-Wloc,-Numot),
+                             seeds %>% select(-Seed),by = c("Wteam" = "Team","Season")) %>%
+  rename(w_seed = seed2) %>%
+  inner_join(.,seeds %>% select(-Seed), by = c("Lteam" = "Team", "Season")) %>%
+  rename(l_seed = seed2) %>%
+  mutate(w_result = 1,
+         l_result = 0,
+         game_id = row_number())
+head(results_w_seed)
+```
+
+```{r}
+?dplyr::gather
+
+gather(results_w_seed %>% select(Season,game_id,w_seed,l_seed),
+       key =,
+       value = team)
+```
+
+```{r}
+colnames(results_w_seed)
+agg_results <- gather(results_w_seed %>% select(game_id,w_seed),
+       seed,
+       team,
+       -game_id) %>%
+  union(.,
+        gather(results_w_seed %>% select(game_id,l_seed),
+               seed,
+               team,
+               -game_id)) %>%
+  arrange(game_id,seed) %>%
+  mutate(numeric_seed = as.numeric(team)) %>%
+  arrange(game_id,team) %>%
+  select(game_id,seed,numeric_seed) %>%
+  spread(key = seed,
+   value = numeric_seed) %>% 
+  group_by(game_id) %>%
+  mutate(win = ifelse(w_seed <= l_seed, 1, 0),
+         matchup = paste0(min(w_seed,l_seed),"-",max(w_seed,l_seed)),
+         same    = ifelse(w_seed == l_seed, 1, 0)) %>%
+  ungroup() %>%
+  group_by(matchup,same) %>%
+  summarise(win_prob = sum(win)/n(),
+            sample_size = n()) %>%
+  mutate(win_prob = ifelse(same == 1,win_prob/2,win_prob)) %>%
+  select(-same)
+
+
+```
+
+```{r}
+all_possible_matchups <- data.frame(
+  expand.grid(1:16,1:16),
+  stringsAsFactors = FALSE)
+head(all_possible_matchups)
+# eliminate when var1 < var2
+all_possible_matchups <- 
+  all_possible_matchups %>%
+  filter(Var1 <= Var2) %>%
+  arrange(Var1,Var2) %>%
+  # mutate(high = ifelse(Var1 <10,paste0('0',Var1),as.character(Var1)),
+         # low  = ifelse(Var2 <10,paste0('0',Var2),as.character(Var2))) %>%
+  mutate(matchup = paste0(Var1,"-",Var2)) %>%
+  select(matchup) %>%
+  left_join(.,agg_results, by = "matchup")
+```
+
+```{r}
+game_prediction <- function(seed1,seed2) {
+  
+  if(seed1 == seed2){
+    return(sample(c('top','bottom'),1,prob = c(0.5,0.5)))
+  }
+  else{
+    seed1_prob <- 
+    all_possible_matchups %>%
+      filter(matchup == paste0(seed1,"-",seed2)) %>%
+      select(win_prob)
+  
+    probs <- c(seed1_prob,1-seed1_prob)
+  
+    sample(c(1,0),1,prob = probs)
+  
+  }
+}
+
+game_prediction(1,16)
+```
+
+
+```{r}
+# Fill out the Catalina bracket
+set.seed(20170314)
+# Round 1
+# East
+game_prediction(1,16)
+game_prediction(8,9)
+game_prediction(5,12)
+game_prediction(4,13)
+game_prediction(6,11)
+game_prediction(3,14)
+game_prediction(7,10)
+game_prediction(2,15)
+
+# West
+game_prediction(1,16)
+game_prediction(8,9)
+game_prediction(5,12)
+game_prediction(4,13)
+game_prediction(6,11)
+game_prediction(3,14)
+game_prediction(7,10)
+game_prediction(2,15)
+
+
+
+# Midwest
+game_prediction(1,16)
+game_prediction(8,9)
+game_prediction(5,12)
+game_prediction(4,13)
+game_prediction(6,11)
+game_prediction(3,14)
+game_prediction(7,10)
+game_prediction(2,15)
+
+# South
+game_prediction(1,16)
+game_prediction(8,9)
+game_prediction(5,12)
+game_prediction(4,13)
+game_prediction(6,11)
+game_prediction(3,14)
+game_prediction(7,10)
+game_prediction(2,15)
+
+
+
+## Round 2
+# East
+game_prediction(1,8)
+game_prediction(5,13)
+game_prediction(3,11)
+game_prediction(2,7)
+
+# West
+game_prediction(1,8)
+game_prediction(5,13)
+game_prediction(3,6)
+game_prediction(2,7)
+
+# Midwest
+game_prediction(1,8)
+game_prediction(5,13)
+game_prediction(3,11)
+game_prediction(2,7)
+
+# South
+game_prediction(1,8)
+game_prediction(4,5)
+game_prediction(3,6)
+game_prediction(2,7)
+
+## Round 3
+
+# East
+game_prediction(1,5)
+game_prediction(2,11)
+
+# West
+game_prediction(1,5)
+game_prediction(3,7)
+
+# Midwest
+game_prediction(1,5)
+game_prediction(2,11)
+
+# South
+game_prediction(4,8)
+game_prediction(6,7)
+
+
+## Elite 8
+
+# East
+game_prediction(1,2)
+# West
+game_prediction(1,3)
+# Midwest
+game_prediction(1,2)
+# South
+game_prediction(6,8)
+
+# Final Four
+
+# East v West
+game_prediction(2,3)
+# Midwest v South
+game_prediction(1,8)
+
+# Championship
+game_prediction(1,2)
+
+```
+
