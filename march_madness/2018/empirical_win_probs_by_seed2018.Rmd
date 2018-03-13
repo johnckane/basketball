@@ -1,0 +1,109 @@
+---
+title: "March Madness 2017"
+output: html_notebook
+---
+
+
+### Libraries and Data
+```{r}
+library(tidyverse)
+results <- read_csv(file = "/home/john/basketball/march_madness/2018/data/tourney_results.csv")
+seeds <- read_csv(file = "/home/john/basketball/march_madness/2018/data/tourney_seeds.csv")
+slots <- read_csv(file = "/home/john/basketball/march_madness/2018/data/tourney_slots.csv")
+```
+
+```{r}
+head(results)
+head(seeds)
+head(slots)
+```
+
+```{r}
+table(results$season)
+table(result)
+table(seeds$seed)
+```
+
+First thing make the seed numeric. 
+```{r}
+library(magrittr)
+seeds %<>%
+  mutate(seed = as.numeric(str_sub(seed,2,3)))
+table(seeds$seed)
+```
+
+Now from the results replace w_team, l_team with seed
+
+```{r}
+results2 <-
+  results %>%
+  mutate(gameid = row_number()) %>%
+  select(-daynum,-wscore,-lscore,-numot) %>%
+  inner_join(.,
+             seeds %>% rename(wseed = seed), 
+             by = c("season","wteam" = "team")) %>%
+  inner_join(.,
+             seeds %>% rename(lseed = seed),
+             by = c("season","lteam" = "team")) %>%
+  mutate(matchup = paste0(pmin(wseed,lseed),"-",pmax(wseed,lseed)),
+         higher_seed_wins = ifelse(wseed < lseed, 1,
+                                   ifelse(wseed == lseed, 0.5,0)))
+```
+
+Now aggregate
+
+```{r}
+results3 <-
+results2 %>%
+  group_by(matchup) %>%
+  summarise(higher_seed_win_prob = sum(higher_seed_wins)/n())
+```
+
+```{r}
+pick_winners <- function(matchup, data = results3, num_matchups = 4){
+ m <- enquo(matchup)
+ p <- data %>% filter(matchup == !!m) %>% select(higher_seed_win_prob) %>% unlist() %>% unname()
+ sample(x = c(1,0), size = num_matchups, prob = c(p,1-p), replace=TRUE)
+}
+
+sample(x =c(1,0), size = 4, prob = c(p0,1-p0),replace = TRUE)
+p0 <- results3 %>% filter(matchup == "1-16") %>% select(higher_seed_win_prob) %>% unlist() %>% unname()
+p0
+```
+
+
+```{r}
+set.seed(20181)
+# Round 1
+pick_winners("1-16")
+pick_winners("2-15")
+pick_winners("3-14")
+pick_winners("4-13")
+pick_winners("5-12")
+pick_winners("6-11")
+pick_winners("7-10")
+pick_winners("8-9")
+# Round 2
+pick_winners("3-11", num_matchups = 1) # wrong number of matchups
+pick_winners("3-11", num_matchups = 2)
+pick_winners("2-10", num_matchups = 1) # wronng number of matchups
+pick_winners("2-10", num_matchups = 3)
+pick_winners("4-12", num_matchups = 3)
+pick_winners("3-6", num_matchups = 3) # wrong number of matchups
+pick_winners("3-6", num_matchups = 2) # wrong number of matchups
+pick_winners("1-9", num_matchups = 1) 
+pick_winners("2-7", num_matchups = 1) 
+# Round 3
+pick_winners("1-4", num_matchups = 1) 
+pick_winners("2-11", num_matchups = 1) 
+pick_winners("1-12", num_matchups = 3) 
+pick_winners("2-3", num_matchups = 3) 
+# Round 4
+pick_winners("2-4", num_matchups = 1) 
+pick_winners("1-3", num_matchups = 2) 
+pick_winners("1-2", num_matchups = 1) 
+# Round 5
+pick_winners("1-4", num_matchups = 1) # I'm over ruling, go X!
+pick_winners("1-3", num_matchups = 1) 
+```
+
