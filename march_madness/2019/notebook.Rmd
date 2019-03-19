@@ -1,0 +1,92 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+seeds <- read_csv("/home/john/basketball/march_madness/2019/data/DataFiles/NCAATourneySeeds.csv")
+results <- read_csv("/home/john/basketball/march_madness/2019/data/DataFiles/NCAATourneyCompactResults.csv")
+slots <- read_csv("/home/john/basketball/march_madness/2019/data/DataFiles/NCAATourneySlots.csv")
+```
+
+Join the two...
+
+```{r}
+colnames(results)
+```
+
+```{r}
+colnames(seeds)
+```
+
+
+```{r}
+results_w_seeds <- 
+  inner_join(results %>% select(Season,WTeamID,LTeamID),
+             seeds %>% mutate(WSeed = str_sub(Seed,2,3)),
+             by = c('Season','WTeamID' = 'TeamID')) %>%
+  inner_join(.,
+             seeds %>% mutate(LSeed = str_sub(Seed,2,3)),
+             by = c('Season','LTeamID' = 'TeamID')) %>%
+  mutate(matchup = paste0(pmin(WSeed,LSeed),"-",pmax(WSeed,LSeed))) %>%
+  select(Season,WSeed,LSeed,matchup)
+```
+
+```{r}
+head(results_w_seeds)
+```
+
+```{r}
+results_w_seeds %>%
+  pull(matchup) %>%
+  unique %>%
+  cbind()
+```
+
+```{r}
+
+
+
+```
+
+
+
+```{r}
+colnames(results_w_seeds) <- tolower(colnames(results_w_seeds))
+```
+
+
+```{r}
+results_w_seeds %>%
+  group_by(season)
+```
+
+
+
+
+
+
+
+
+
+```{r}
+game_rounds
+```
+
+```{r}
+game_rounds <- tibble(expand.grid(1:6,1:16))
+game_rounds$round <- ifelse(game_rounds$Var1 == game_rounds$Var2,)
+```
+
+
+
+
+
+
+
+
+
