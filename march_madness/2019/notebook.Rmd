@@ -68,6 +68,8 @@ results_w_seeds %>%
 
 
 
+# What round did each of these games get played in?\
+# Can I start with results and infer the round?
 
 
 
@@ -83,8 +85,30 @@ game_rounds$round <- ifelse(game_rounds$Var1 == game_rounds$Var2,)
 ```
 
 
+```{r}
+season_first_tourney_day <-
+results %>%
+  group_by(Season) %>%
+  summarise(first_day = min(DayNum))
 
+```
 
+```{r}
+results_day_since_first <-
+  results %>%
+  inner_join(season_first_tourney_day, by = 'Season') %>%
+  mutate(days_since_first = DayNum - first_day)
+```
+
+```{r}
+table(results_day_since_first$days_since_first)
+```
+
+Which years were there opening games?
+
+```{r}
+
+```
 
 
 
