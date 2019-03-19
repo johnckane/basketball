@@ -7,9 +7,9 @@ output: html_notebook
 ### Libraries and Data
 ```{r}
 library(tidyverse)
-results <- read_csv(file = "/home/john/basketball/march_madness/2018/data/tourney_results.csv")
-seeds <- read_csv(file = "/home/john/basketball/march_madness/2018/data/tourney_seeds.csv")
-slots <- read_csv(file = "/home/john/basketball/march_madness/2018/data/tourney_slots.csv")
+results <- read_csv(file = "/home/john/basketball/march_madness/2018/data - read readme/tourney_results.csv")
+seeds <- read_csv(file = "/home/john/basketball/march_madness/2018/data - read readme/tourney_seeds.csv")
+slots <- read_csv(file = "/home/john/basketball/march_madness/2018/data - read readme/tourney_slots.csv")
 ```
 
 ```{r}
