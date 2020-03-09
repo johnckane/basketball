@@ -1,0 +1,166 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(knitr)
+seeds <- read_csv("/home/john/projects/basketball/march_madness/2020/data/MDataFiles_Stage1/MNCAATourneySeeds.csv")
+results <- read_csv("/home/john/projects/basketball/march_madness/2020/data/MDataFiles_Stage1/MNCAATourneyCompactResults.csv")
+```
+
+```{r}
+results_w_seeds <- 
+  inner_join(results %>% select(Season,WTeamID,LTeamID),
+             seeds %>% mutate(WSeed = str_sub(Seed,2,3)),
+             by = c('Season','WTeamID' = 'TeamID')) %>%
+  inner_join(.,
+             seeds %>% mutate(LSeed = str_sub(Seed,2,3)),
+             by = c('Season','LTeamID' = 'TeamID')) %>%
+  mutate(matchup = paste0(pmin(WSeed,LSeed),"-",pmax(WSeed,LSeed))) %>%
+  select(Season,WSeed,LSeed,matchup)
+```
+
+```{r}
+season_first_tourney_day <-
+results %>%
+  group_by(Season) %>%
+  summarise(first_day = min(DayNum))
+```
+
+```{r}
+results_tourney_day <-
+  results %>%
+  inner_join(season_first_tourney_day, by = 'Season') %>%
+  mutate(days_since_first = DayNum - first_day)
+```
+
+```{r}
+table(results_tourney_day$days_since_first)
+```
+
+```{r}
+results_tourney_day %>%
+  group_by(Season) %>%
+  summarise(count = n_distinct(days_since_first))
+```
+
+
+
+```{r}
+results_tourney_day <-
+  results_tourney_day%>%
+  mutate(round  = case_when(
+    Season %in% c(1985:2000) & days_since_first %in% c(0,1)  ~ 1,
+    Season %in% c(1985:2000) & days_since_first %in% c(2,3)  ~ 2,
+    Season %in% c(1985:2000) & days_since_first %in% c(7,8)  ~ 3,
+    Season %in% c(1985:2000) & days_since_first %in% c(9,10) ~ 4,
+    Season %in% c(1985:2000) & days_since_first %in% c(16)   ~ 5,
+    Season %in% c(1985:2000) & days_since_first %in% c(18)   ~ 6,
+    Season %in% c(2001:2010) & days_since_first %in% c(0)    ~ 0,
+    Season %in% c(2001:2010) & days_since_first %in% c(2,3)  ~ 1,
+    Season %in% c(2001:2010) & days_since_first %in% c(4,5)  ~ 2,
+    Season %in% c(2001:2010) & days_since_first %in% c(9,10) ~ 3,
+    Season %in% c(2001:2010) & days_since_first %in% c(11,12)~ 4,
+    Season %in% c(2001:2010) & days_since_first %in% c(18)   ~ 5,
+    Season %in% c(2001:2010) & days_since_first %in% c(20)   ~ 6,
+    Season %in% c(2011:2019) & days_since_first %in% c(0,1)  ~ 0,
+    Season %in% c(2011:2019) & days_since_first %in% c(2,3)  ~ 1,
+    Season %in% c(2011:2019) & days_since_first %in% c(4,5)  ~ 2,
+    Season %in% c(2011:2019) & days_since_first %in% c(9,10) ~ 3,
+    Season %in% c(2011:2019) & days_since_first %in% c(11,12)~ 4,
+    Season %in% c(2011:2019) & days_since_first %in% c(18)   ~ 5,
+    Season %in% c(2011:2019) & days_since_first %in% c(20)   ~ 6,
+    TRUE ~ NA_real_))
+
+```
+
+
+```{r}
+results_w_seeds <-
+  results_tourney_day %>% select(Season,WTeamID,LTeamID,round) %>%
+  inner_join(.,
+             seeds %>% mutate(WSeed = str_sub(Seed,2,3)),
+             by = c('Season','WTeamID' = 'TeamID')) %>%
+  inner_join(.,
+             seeds %>% mutate(LSeed = str_sub(Seed,2,3)),
+             by = c('Season','LTeamID' = 'TeamID')) %>%
+  select(Season,WSeed,LSeed,round)
+```
+
+
+```{r}
+head(results_w_seeds)
+```
+
+```{r}
+results_w_seeds %>%
+  filter(round > 0) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion")) %>%
+  kable()
+```
+
+Last 5 Years (2015-2019)
+```{r}
+results_w_seeds %>%
+  filter(round > 0, Season %in% c(2015:2019)) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"))
+```
+
+
+
+Five Years Before That (2010-2014)
+```{r}
+results_w_seeds %>%
+  filter(round > 0, Season %in% c(2010:2014)) %>% 
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion")) %>%
+  kable()
+```
+
+
+```{r}
+
+```
+
