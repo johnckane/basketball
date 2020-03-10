@@ -117,10 +117,12 @@ results_w_seeds %>%
 
 Last 5 Years (2015-2019)
 ```{r}
+last5years <- 
 results_w_seeds %>%
   filter(round > 0, Season %in% c(2015:2019)) %>%
-  group_by(Season,round,WSeed) %>%
+    group_by(Season,round,WSeed) %>%
   summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
   ungroup() %>%
   select(-Season) %>%
   group_by(round) %>%
@@ -132,14 +134,16 @@ results_w_seeds %>%
                            round == 3 ~ "Elite Eight",
                            round == 4 ~ "Final Four",
                            round == 5 ~ "Championship Game",
-                           round == 6 ~ "Champion"))
+                           round == 6 ~ "Champion"),
+         when = "last5")
 ```
 
 
 
 Five Years Before That (2010-2014)
 ```{r}
-results_w_seeds %>%
+nextlast5years <-
+ results_w_seeds %>%
   filter(round > 0, Season %in% c(2010:2014)) %>% 
   group_by(Season,round,WSeed) %>%
   summarise(count = n()) %>%
@@ -155,12 +159,172 @@ results_w_seeds %>%
                            round == 3 ~ "Elite Eight",
                            round == 4 ~ "Final Four",
                            round == 5 ~ "Championship Game",
-                           round == 6 ~ "Champion")) %>%
-  kable()
+                           round == 6 ~ "Champion"),
+         when = "5beforethat")
 ```
 
 
 ```{r}
-
+compare5 <-
+last5years %>%
+  bind_rows(.,
+            nextlast5years) %>%
+  arrange(round)
 ```
+
+
+## Same thing for 10 years
+```{r}
+last10years <- 
+results_w_seeds %>%
+  filter(round > 0, Season %in% c(2010:2019)) %>%
+    group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         when = "last10")
+```
+
+
+```{r}
+nextlast10years <-
+  results_w_seeds %>%
+  filter(round > 0, Season %in% c(2000:2009)) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         when = "last10beforethat")
+```
+
+```{r}
+compare10 <-
+last10years %>%
+  bind_rows(.,
+            nextlast10years) %>%
+  arrange(round)
+```
+
+
+## What's in Massey Scores?
+
+```{r}
+massey <- read_csv("/home/john/projects/basketball/march_madness/2020/data/MDataFiles_Stage1/MMasseyOrdinals.csv")
+```
+
+```{r}
+head(massey)
+```
+
+
+```{r}
+massey %>%
+  group_by(SystemName) %>%
+  tally
+```
+
+Focus on AP rankings    
+
+```{r}
+ap_rankings <-
+  massey %>%
+  filter(SystemName == 'AP')
+```
+
+```{r}
+summary(ap_rankings$OrdinalRank)
+```
+
+```{r}
+top1_churn <-
+  ap_rankings %>%
+  filter(OrdinalRank == 1) %>%
+  group_by(Season) %>%
+  summarise(churn1 = n_distinct(TeamID))
+```
+
+
+```{r}
+top5_churn <-
+  ap_rankings %>%
+  filter(OrdinalRank <= 5) %>%
+  group_by(Season) %>%
+  summarise(churn5 = n_distinct(TeamID))
+```
+
+```{r}
+top10_churn <-
+  ap_rankings %>%
+  filter(OrdinalRank <= 10) %>%
+  group_by(Season) %>%
+  summarise(churn10 = n_distinct(TeamID))
+```
+
+```{r}
+top25_churn <-
+  ap_rankings %>%
+  filter(OrdinalRank <= 25) %>%
+  group_by(Season) %>%
+  summarise(churn25 = n_distinct(TeamID))
+```
+
+
+
+```{r}
+churn_data <-
+  top1_churn %>%
+  inner_join(top5_churn,  by = "Season") %>%
+  inner_join(top10_churn, by = "Season") %>%
+  inner_join(top25_churn, by = "Season")
+```
+
+```{r}
+head(churn_data)
+```
+
+
+Run k-means
+```{r}
+?kmeans
+k2 <- kmeans(churn_data[,-1],2)
+k3 <- kmeans(churn_data[,-1],3)
+k4 <- kmeans(churn_data[,-1],4)
+```
+
+```{r}
+churn_data$k2 <- k2$cluster
+churn_data$k3 <- k3$cluster
+churn_data$k4 <- k4$cluster
+```
+
+```{r}
+ggplot(data= churn_data %>% mutate(current_year = ifelse(Season == 2019,'Yes','No')),
+       aes(x = k4,y=Season,color = current_year)) +
+  geom_point()
+```
+
+## Look at averages in these different groups in the tournament
+
 
