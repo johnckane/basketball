@@ -304,13 +304,42 @@ churn_data <-
 head(churn_data)
 ```
 
+```{r}
+churn_data_matrix <- churn_data[,c(2,3,4)]
+colMeans(churn_data_matrix)
+churn_data_matrix_scaled <- scale(churn_data_matrix,center=TRUE,scale=TRUE)
+churn_data_matrix_scaled
+```
+
+
+
+
+```{r}
+ggplot(data = churn_data,
+       aes(x = Season, y = churn1)) +
+  geom_point()
+
+ggplot(data = churn_data,
+       aes(x = Season, y = churn5)) +
+  geom_point()
+
+ggplot(data = churn_data,
+       aes(x = Season, y = churn10)) +
+  geom_point()
+
+ggplot(data = churn_data,
+       aes(x = Season, y = churn25)) +
+  geom_point()
+```
+
+
 
 Run k-means
 ```{r}
 ?kmeans
-k2 <- kmeans(churn_data[,-1],2)
-k3 <- kmeans(churn_data[,-1],3)
-k4 <- kmeans(churn_data[,-1],4)
+k2 <- kmeans(churn_data_matrix_scaled,2)
+k3 <- kmeans(churn_data_matrix_scaled,3)
+k4 <- kmeans(churn_data_matrix_scaled,4)
 ```
 
 ```{r}
@@ -319,12 +348,271 @@ churn_data$k3 <- k3$cluster
 churn_data$k4 <- k4$cluster
 ```
 
-```{r}
-ggplot(data= churn_data %>% mutate(current_year = ifelse(Season == 2019,'Yes','No')),
-       aes(x = k4,y=Season,color = current_year)) +
-  geom_point()
-```
+
 
 ## Look at averages in these different groups in the tournament
 
+```{r}
+vals <-
+churn_data %>%
+  group_by(k2) %>%
+  summarise(values = paste(Season,collapse = ","))
+```
+
+```{r}
+?str_split
+as.numeric(str_split(vals$values[1], pattern = ",", simplify = TRUE))
+```
+
+
+```{r}
+k2_vals <- 
+  churn_data %>%
+  group_by(k2) %>%
+  summarise(values = paste(Season,collapse = ","))
+
+results_a <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k2_vals$values[1], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+        cluster = "a",
+        num_seasons = length(as.numeric(str_split(k2_vals$values[1], pattern = ",", simplify = TRUE))))
+
+results_b <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k2_vals$values[2], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         cluster = "b",
+         num_seasons = length(as.numeric(str_split(k2_vals$values[2], pattern = ",", simplify = TRUE))))
+
+
+compare2 <-
+results_a %>%
+  bind_rows(.,
+            results_b) %>%
+  arrange(round) %>%
+     select(round,cluster,num_seasons,setdiff(colnames(results_a),c('round','cluster','season')))
+compare2
+```
+
+
+```{r}
+k3_vals <- 
+  churn_data %>%
+  group_by(k3) %>%
+  summarise(values = paste(Season,collapse = ","))
+
+results_a <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k3_vals$values[1], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+        cluster = "a",
+        num_seasons = length(as.numeric(str_split(k3_vals$values[1], pattern = ",", simplify = TRUE))))
+
+results_b <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k3_vals$values[2], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         cluster = "b",
+         num_seasons = length(as.numeric(str_split(k3_vals$values[2], pattern = ",", simplify = TRUE))))
+
+results_c <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k3_vals$values[3], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         cluster = "c",
+         num_seasons = length(as.numeric(str_split(k3_vals$values[3], pattern = ",", simplify = TRUE))))
+
+compare3 <-
+results_a %>%
+  bind_rows(.,
+            results_b) %>%
+  bind_rows(.,
+            results_c) %>%
+  arrange(round) %>%
+    select(round,cluster,num_seasons,setdiff(colnames(results_a),c('round','cluster','season')))
+compare3
+```
+
+```{r}
+k4_vals <- 
+  churn_data %>%
+  group_by(k3) %>%
+  summarise(values = paste(Season,collapse = ","))
+
+results_a <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k4_vals$values[1], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+        cluster = "a",
+        num_seasons = length(as.numeric(str_split(k4_vals$values[1], pattern = ",", simplify = TRUE))))
+
+results_b <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k4_vals$values[2], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         cluster = "b",
+         num_seasons = length(as.numeric(str_split(k4_vals$values[2], pattern = ",", simplify = TRUE))))
+
+results_c <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k4_vals$values[3], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         cluster = "c",
+         num_seasons = length(as.numeric(str_split(k4_vals$values[3], pattern = ",", simplify = TRUE))))
+
+results_d <- 
+  results_w_seeds %>%
+  filter(round > 0, Season %in% as.numeric(str_split(k4_vals$values[3], pattern = ",", simplify = TRUE))) %>%
+  group_by(Season,round,WSeed) %>%
+  summarise(count = n()) %>%
+  spread(key = WSeed, value = count, fill = 0) %>%
+  ungroup() %>%
+  select(-Season) %>%
+  group_by(round) %>%
+  summarise_if(is_numeric,mean,na.rm = TRUE) %>%
+  mutate_if(is_numeric,round,1) %>%
+  arrange(desc(round)) %>%
+  mutate(round = case_when(round == 1 ~ "Round of 32",
+                           round == 2 ~ "Sweet 16",
+                           round == 3 ~ "Elite Eight",
+                           round == 4 ~ "Final Four",
+                           round == 5 ~ "Championship Game",
+                           round == 6 ~ "Champion"),
+         cluster = "d",
+         num_seasons = length(as.numeric(str_split(k4_vals$values[4], pattern = ",", simplify = TRUE))))
+
+compare4 <-
+results_a %>%
+  bind_rows(.,
+            results_b) %>%
+  bind_rows(.,
+            results_c) %>%
+  bind_rows(.,
+            results_d) %>%
+  arrange(round) %>%
+  select(round,cluster,num_seasons,setdiff(colnames(results_a),c('round','cluster','season')))
+compare4
+```
+
+
+```{r}
+k2
+```
+
+```{r}
+k3
+```
 
