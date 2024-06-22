@@ -305,6 +305,16 @@ head(churn_data)
 ```
 
 ```{r}
+cor(churn_data[,c(2,3,4,5)])
+```
+
+```{r}
+install.packages("GGally")
+library(GGally)
+ggpairs(churn_data[,c(2,3,4,5)])
+```
+
+```{r}
 churn_data_matrix <- churn_data[,c(2,3,4)]
 colMeans(churn_data_matrix)
 churn_data_matrix_scaled <- scale(churn_data_matrix,center=TRUE,scale=TRUE)
